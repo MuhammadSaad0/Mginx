@@ -14,6 +14,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	_ "modernc.org/sqlite"
 )
@@ -40,12 +41,15 @@ func ReverseProxy(writer http.ResponseWriter, request *http.Request) {
 
 	var rows *sql.Rows
 	var err error
-
+	rwLock.RLock()
 	rows, err = configDb.Query("SELECT SETTING_VALUE FROM SETTINGS WHERE SETTING_NAME='LOAD_BALANCING_STRATEGY';")
 	if err != nil {
+		rwLock.RUnlock()
 		fmt.Fprintln(writer, err.Error())
 		return
 	}
+	rwLock.RUnlock()
+	defer rows.Close()
 
 	rows.Next()
 	var loadBalancingStrat int
@@ -56,6 +60,7 @@ func ReverseProxy(writer http.ResponseWriter, request *http.Request) {
 		fmt.Fprintln(writer, err.Error())
 		return
 	}
+	defer rows.Close()
 	var data string
 	if loadBalancingStrat == 0 { // just use first url
 		rows.Next()
@@ -117,28 +122,30 @@ func ReturnUpstreams(wrriter http.ResponseWriter, request *http.Request) {
 	// returns data for all upstream servers
 	var toRet []interface{}
 	queryStatement := "SELECT * FROM UPSTREAMS"
+	rwLock.RLock()
 	rows, err := configDb.Query(queryStatement)
+	rwLock.RUnlock()
 
 	if err != nil {
 		fmt.Fprintln(wrriter, err.Error())
 		return
 	}
-	rwLock.RLock() // acquire read lock to make sure if write lock has been acquired this read is blocked
+	defer rows.Close()
 	for rows.Next() {
 		var upstreamId interface{}
 		var upstreamUrl interface{}
-		err = rows.Scan(&upstreamId, &upstreamUrl)
+		var online interface{}
+		err = rows.Scan(&upstreamId, &upstreamUrl, &online)
 		if err != nil {
-			rwLock.RUnlock()
 			fmt.Fprintln(wrriter, err.Error())
 			return
 		}
 		var finalData map[string]interface{} = make(map[string]interface{})
 		finalData["id"] = upstreamId
 		finalData["url"] = upstreamUrl
+		finalData["online"] = online
 		toRet = append(toRet, finalData)
 	}
-	rwLock.RUnlock()
 	response := make(map[string][]interface{})
 	if len(toRet) > 0 {
 		response["proxies"] = toRet
@@ -164,7 +171,7 @@ func AddUpstream(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 	rwLock.Lock()
-	_, err = configDb.Query("INSERT INTO UPSTREAMS VALUES (NULL, ?)", data.Url)
+	_, err = configDb.Exec("INSERT INTO UPSTREAMS (URL) VALUES (?);", data.Url)
 	rwLock.Unlock()
 	if err != nil {
 		fmt.Fprintln(writer, err.Error())
@@ -190,7 +197,7 @@ func DeleteUpstream(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	rwLock.Lock()
-	_, err = configDb.Query("DELETE FROM UPSTREAMS WHERE ID = ?", data.Id)
+	_, err = configDb.Exec("DELETE FROM UPSTREAMS WHERE ID = ?", data.Id)
 	rwLock.Unlock()
 
 	if err != nil {
@@ -229,15 +236,53 @@ func UpdateLoadBalancingStrat(writer http.ResponseWriter, request *http.Request)
 	fmt.Fprintln(writer, "Load balancing strategy updated")
 }
 
+func healthCheck() {
+	ticker := time.NewTicker(time.Second * 20) // health check period needs to be from settings
+	for range ticker.C {
+		rwLock.RLock()
+		rows, err := configDb.Query("SELECT URL FROM UPSTREAMS;")
+		if err != nil {
+			rwLock.RUnlock()
+			fmt.Println("HealthCheck error: ", err.Error())
+			break
+		}
+		rwLock.RUnlock()
+		upstreamUpdate := make(map[string]int)
+		for rows.Next() { // since max connections is set to one, cant perform updates inside rows Next0! Took really long to debug why server kept hanging.
+			var data string
+			err = rows.Scan(&data)
+			if err != nil {
+				fmt.Println("HealthCheck error1: ", err.Error())
+				break
+			}
+			_, err = http.Get(data)
+			if err != nil || os.IsTimeout(err) {
+				upstreamUpdate[data] = 0
+
+			} else {
+				upstreamUpdate[data] = 1
+			}
+		}
+		rows.Close()
+		for upstream, value := range upstreamUpdate {
+			rwLock.Lock()
+			configDb.Exec("UPDATE UPSTREAMS SET ONLINE = ? WHERE URL = ?", value, upstream)
+			rwLock.Unlock()
+		}
+	}
+}
+
 func main() {
 	var err error
-	configDb, err = sql.Open("sqlite", "config.db")
+	configDb, err = sql.Open("sqlite", "config.db:locked.sqlite?cache=shared") // issue 209 golang sqlite interface
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 	}
-	upstreamsStatement := "CREATE TABLE IF NOT EXISTS UPSTREAMS (ID INTEGER PRIMARY KEY, URL STRING);"                                                                                                       // initialize config table
+	configDb.SetMaxOpenConns(1)
+	upstreamsStatement := "CREATE TABLE IF NOT EXISTS UPSTREAMS (ID INTEGER PRIMARY KEY, URL STRING, ONLINE INTEGER DEFAULT 0 NOT NULL);"                                                                    // initialize config table
 	settingsStatement := "CREATE TABLE IF NOT EXISTS SETTINGS (ID INTEGER PRIMARY KEY, SETTING_NAME STRING, SETTING_VALUE INT); INSERT OR IGNORE INTO SETTINGS VALUES (NULL, 'LOAD_BALANCING_STRATEGY', 0);" // initialize settings table
 
+	rwLock.Lock()
 	_, err = configDb.Exec(upstreamsStatement)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
@@ -247,6 +292,7 @@ func main() {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 	}
+	rwLock.Unlock()
 
 	http.HandleFunc("GET /config/upstreams", ReturnUpstreams)
 	http.HandleFunc("POST /config/add-upstream", AddUpstream)
@@ -254,5 +300,8 @@ func main() {
 	http.HandleFunc("PATCH /config/update-load-balancing-strategy", UpdateLoadBalancingStrat)
 	// http.Handle("GET /", http.FileServer(http.Dir("./")))
 	http.HandleFunc("/proxy/*", ReverseProxy)
+
+	go healthCheck()
+
 	log.Fatal(http.ListenAndServe(":3690", nil))
 }
