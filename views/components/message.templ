@@ -1,0 +1,11 @@
+package components
+
+templ Message(message string) {
+    <script>
+    window.setTimeout(() => {document.getElementById("message").remove()
+    }, 3000)
+    </script>
+    <div id="message">   
+    <p>{message}</p>
+    </div>
+}

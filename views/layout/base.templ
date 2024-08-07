@@ -1,5 +1,7 @@
 package layout
 
+import "mginx/views/components"
+
 templ BaseLayout() {
     <!DOCTYPE html>
     <html lang="en">
@@ -10,12 +12,14 @@ templ BaseLayout() {
         <meta name="description" content="Simple Reverse Proxy.">
     </head>
     <script src="https://unpkg.com/htmx.org@2.0.1" integrity="sha384-QWGpdj554B4ETpJJC9z+ZHJcA/i59TyjxEPXiiUgN2WmTyV5OEZWCD6gQhgkdpB/" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/htmx.org/dist/ext/json-enc.js"></script>
     <body>
         <header>
             <h1>MGINX</h1>
         </header>
         <main>
-            <div hx-get="/config/upstreams" hx-trigger="load, every 10s" hx-swap="innerHTML" style="width: 18.75rem; height: 12.5rem; border: 1px solid #ccc; overflow-y: auto;">            </div>
+            <div hx-get="/config/upstreams" hx-trigger="load, every 10s" hx-swap="innerHTML" style="width: 18.75rem; height: 12.5rem; border: 1px solid #ccc; overflow-y: auto;"></div>
+            @components.AddUpstream()
         </main>
         <footer>
             <p>&copy; 2024 MGINX.</p>

@@ -1,5 +1,7 @@
 package components
 
+import "strconv"
+
 type UpstreamsProp struct {
     Id int64;
     Url string;
@@ -8,12 +10,16 @@ type UpstreamsProp struct {
 
 templ Upstreams(data []UpstreamsProp){
         for _, upstream := range data {
+        
         <div  style="display: flex; justify-content: space-between; padding: 0.625rem; border-bottom: 1px solid #eee;">
-            <span>{upstream.Url}</span>
+            <span id="id">{strconv.Itoa(int(upstream.Id))}</span>
+            <span id="url">{upstream.Url}</span>
             <span>if upstream.Online == 1 {
                 Online}else{Offline
                 }
             </span>
+            <input type="hidden" name="id" id={strconv.Itoa(int(upstream.Id))} value={strconv.Itoa(int(upstream.Id))}></input>
+            <button hx-delete="/config/delete-upstream" hx-ext="json-enc" hx-swap="afterbegin" hx-include="{{strconv.Itoa(int(upstream.Id))}}">Delete</button>
         </div>
         }
 }

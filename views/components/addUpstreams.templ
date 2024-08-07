@@ -1,0 +1,9 @@
+package components
+
+templ AddUpstream() {
+    
+    <form hx-post="/config/add-upstream" hx-swap="afterend" hx-ext="json-enc">
+    <input type="text" id="url" name="url" required/>
+    <button type="submit" >Add Upstream</button>
+    </form>
+}

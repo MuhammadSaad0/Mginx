@@ -168,18 +168,21 @@ func AddUpstream(writer http.ResponseWriter, request *http.Request) {
 	var err error
 	err = decoder.Decode(&data)
 	if err != nil {
-		fmt.Fprintln(writer, err.Error())
+		component := components.Message("Error Adding Upstream!")
+		component.Render(context.Background(), writer)
 		return
 	}
 	rwLock.Lock()
 	_, err = configDb.Exec("INSERT INTO UPSTREAMS (URL) VALUES (?);", data.Url)
 	rwLock.Unlock()
 	if err != nil {
-		fmt.Fprintln(writer, err.Error())
+		component := components.Message("Error Adding Upstream")
+		component.Render(context.Background(), writer)
 		return
 	}
 
-	fmt.Fprintf(writer, "UPSTREAM %s added to configuration", data.Url)
+	component := components.Message("Upstream Added!")
+	component.Render(context.Background(), writer)
 }
 
 type deleteUpstream struct {
@@ -192,21 +195,25 @@ func DeleteUpstream(writer http.ResponseWriter, request *http.Request) {
 	var data deleteUpstream
 	var err error
 	err = decoder.Decode(&data)
+	fmt.Println(1, request)
 	if err != nil {
-		fmt.Fprintln(writer, err.Error())
+		component := components.Message("Unable to Delete Upstream!")
+		component.Render(context.Background(), writer)
 		return
 	}
-
+	fmt.Println(1, data)
 	rwLock.Lock()
 	_, err = configDb.Exec("DELETE FROM UPSTREAMS WHERE ID = ?", data.Id)
 	rwLock.Unlock()
 
 	if err != nil {
-		fmt.Fprintln(writer, err.Error())
+		component := components.Message("Unable to Delete Upstream!")
+		component.Render(context.Background(), writer)
 		return
 	}
 
-	fmt.Fprintln(writer, "Upstream deleted")
+	component := components.Message("Upstream Deleted!")
+	component.Render(context.Background(), writer)
 
 }
 
