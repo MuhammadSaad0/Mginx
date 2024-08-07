@@ -1,0 +1,19 @@
+package components
+
+type UpstreamsProp struct {
+    Id int64;
+    Url string;
+    Online int64;
+}
+
+templ Upstreams(data []UpstreamsProp){
+        for _, upstream := range data {
+        <div  style="display: flex; justify-content: space-between; padding: 0.625rem; border-bottom: 1px solid #eee;">
+            <span>{upstream.Url}</span>
+            <span>if upstream.Online == 1 {
+                Online}else{Offline
+                }
+            </span>
+        </div>
+        }
+}

@@ -9,6 +9,8 @@ import (
 	"io"
 	"log"
 	"math/rand"
+	"mginx/views/components"
+	"mginx/views/layout"
 	"net/http"
 	"net/url"
 	"os"
@@ -25,8 +27,8 @@ import (
 3) handle https HARD
 4) Move the handler functions to internal directory EASY
 5) Add active upstream selection EASY
-6) Add multiple active upstreams options with some way to direct requests (round robin or load based, something like that) HARD
-7) Upstream health check MEDIUM
+6) Add multiple active upstreams options with some way to direct requests (round robin or load based, something like that) HARD ✓
+7) Upstream health check MEDIUM ✓
 8) Metrics MEDIUM
 */
 
@@ -120,7 +122,7 @@ func ReverseProxy(writer http.ResponseWriter, request *http.Request) {
 
 func ReturnUpstreams(wrriter http.ResponseWriter, request *http.Request) {
 	// returns data for all upstream servers
-	var toRet []interface{}
+	var toRet []components.UpstreamsProp
 	queryStatement := "SELECT * FROM UPSTREAMS"
 	rwLock.RLock()
 	rows, err := configDb.Query(queryStatement)
@@ -140,20 +142,19 @@ func ReturnUpstreams(wrriter http.ResponseWriter, request *http.Request) {
 			fmt.Fprintln(wrriter, err.Error())
 			return
 		}
-		var finalData map[string]interface{} = make(map[string]interface{})
-		finalData["id"] = upstreamId
-		finalData["url"] = upstreamUrl
-		finalData["online"] = online
+		var finalData components.UpstreamsProp
+		finalData.Id = upstreamId.(int64)
+		finalData.Url = upstreamUrl.(string)
+		finalData.Online = online.(int64)
 		toRet = append(toRet, finalData)
 	}
-	response := make(map[string][]interface{})
-	if len(toRet) > 0 {
-		response["proxies"] = toRet
-	} else {
-		response["proxies"] = make([]interface{}, 0)
-	}
-	encoder := json.NewEncoder(wrriter)
-	encoder.Encode(response)
+	// response := make(map[string][]interface{})
+	// if len(toRet) > 0 {
+	// 	response["proxies"] = toRet
+	// } else {
+	// 	response["proxies"] = make([]interface{}, 0)
+	// }
+	components.Upstreams(toRet).Render(context.Background(), wrriter)
 }
 
 type addUpstream struct {
@@ -236,6 +237,11 @@ func UpdateLoadBalancingStrat(writer http.ResponseWriter, request *http.Request)
 	fmt.Fprintln(writer, "Load balancing strategy updated")
 }
 
+func serveHome(writer http.ResponseWriter, request *http.Request) {
+	component := layout.BaseLayout()
+	component.Render(context.Background(), writer)
+}
+
 func healthCheck() {
 	ticker := time.NewTicker(time.Second * 20) // health check period needs to be from settings
 	for range ticker.C {
@@ -298,6 +304,7 @@ func main() {
 	http.HandleFunc("POST /config/add-upstream", AddUpstream)
 	http.HandleFunc("DELETE /config/delete-upstream", DeleteUpstream)
 	http.HandleFunc("PATCH /config/update-load-balancing-strategy", UpdateLoadBalancingStrat)
+	http.HandleFunc("GET /home", serveHome)
 	// http.Handle("GET /", http.FileServer(http.Dir("./")))
 	http.HandleFunc("/proxy/*", ReverseProxy)
 

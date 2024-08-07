@@ -1,0 +1,25 @@
+package layout
+
+templ BaseLayout() {
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>MGINX</title>
+        <meta name="description" content="Simple Reverse Proxy.">
+    </head>
+    <script src="https://unpkg.com/htmx.org@2.0.1" integrity="sha384-QWGpdj554B4ETpJJC9z+ZHJcA/i59TyjxEPXiiUgN2WmTyV5OEZWCD6gQhgkdpB/" crossorigin="anonymous"></script>
+    <body>
+        <header>
+            <h1>MGINX</h1>
+        </header>
+        <main>
+            <div hx-get="/config/upstreams" hx-trigger="load, every 10s" hx-swap="innerHTML" style="width: 18.75rem; height: 12.5rem; border: 1px solid #ccc; overflow-y: auto;">            </div>
+        </main>
+        <footer>
+            <p>&copy; 2024 MGINX.</p>
+        </footer>
+    </body>
+    </html>
+}
