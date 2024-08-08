@@ -35,7 +35,7 @@ func Upstreams(data []UpstreamsProp) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		for _, upstream := range data {
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div style=\"display: flex; justify-content: space-between; padding: 0.625rem; border-bottom: 1px solid #eee;\"><span id=\"id\">")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div style=\"display: flex; justify-content: space-between; padding: 0.625rem; border-bottom: 1px solid #eee;\"><form hx-post=\"/config/delete-upstream\" hx-ext=\"json-enc\" hx-target=\"#upstreams-list\" hx-target-error=\"#errors\" hx-swap=\"innerHTML\"><span id=\"id\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -102,7 +102,7 @@ func Upstreams(data []UpstreamsProp) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\"> <button hx-delete=\"/config/delete-upstream\" hx-ext=\"json-enc\" hx-swap=\"afterbegin\" hx-include=\"{{strconv.Itoa(int(upstream.Id))}}\">Delete</button></div>")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\"> <button type=\"submit\" hx-swap=\"afterbegin\">Delete</button></form></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

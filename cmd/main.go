@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -181,12 +182,11 @@ func AddUpstream(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	component := components.Message("Upstream Added!")
-	component.Render(context.Background(), writer)
+	ReturnUpstreams(writer, request)
 }
 
 type deleteUpstream struct {
-	Id int `json:"id"`
+	Id string `json:"id"`
 }
 
 func DeleteUpstream(writer http.ResponseWriter, request *http.Request) {
@@ -195,15 +195,19 @@ func DeleteUpstream(writer http.ResponseWriter, request *http.Request) {
 	var data deleteUpstream
 	var err error
 	err = decoder.Decode(&data)
-	fmt.Println(1, request)
 	if err != nil {
 		component := components.Message("Unable to Delete Upstream!")
 		component.Render(context.Background(), writer)
 		return
 	}
-	fmt.Println(1, data)
+	id, err := strconv.Atoi(data.Id)
+	if err != nil {
+		component := components.Message("Unable to Delete Upstream!")
+		component.Render(context.Background(), writer)
+		return
+	}
 	rwLock.Lock()
-	_, err = configDb.Exec("DELETE FROM UPSTREAMS WHERE ID = ?", data.Id)
+	_, err = configDb.Exec("DELETE FROM UPSTREAMS WHERE ID = ?", id)
 	rwLock.Unlock()
 
 	if err != nil {
@@ -211,10 +215,7 @@ func DeleteUpstream(writer http.ResponseWriter, request *http.Request) {
 		component.Render(context.Background(), writer)
 		return
 	}
-
-	component := components.Message("Upstream Deleted!")
-	component.Render(context.Background(), writer)
-
+	ReturnUpstreams(writer, request)
 }
 
 type updateLoadBalancing struct {
@@ -309,7 +310,7 @@ func main() {
 
 	http.HandleFunc("GET /config/upstreams", ReturnUpstreams)
 	http.HandleFunc("POST /config/add-upstream", AddUpstream)
-	http.HandleFunc("DELETE /config/delete-upstream", DeleteUpstream)
+	http.HandleFunc("POST /config/delete-upstream", DeleteUpstream)
 	http.HandleFunc("PATCH /config/update-load-balancing-strategy", UpdateLoadBalancingStrat)
 	http.HandleFunc("GET /home", serveHome)
 	// http.Handle("GET /", http.FileServer(http.Dir("./")))

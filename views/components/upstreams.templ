@@ -10,8 +10,8 @@ type UpstreamsProp struct {
 
 templ Upstreams(data []UpstreamsProp){
         for _, upstream := range data {
-        
         <div  style="display: flex; justify-content: space-between; padding: 0.625rem; border-bottom: 1px solid #eee;">
+            <form hx-post="/config/delete-upstream" hx-ext="json-enc" hx-target="#upstreams-list" hx-target-error="#errors" hx-swap="innerHTML" >
             <span id="id">{strconv.Itoa(int(upstream.Id))}</span>
             <span id="url">{upstream.Url}</span>
             <span>if upstream.Online == 1 {
@@ -19,7 +19,8 @@ templ Upstreams(data []UpstreamsProp){
                 }
             </span>
             <input type="hidden" name="id" id={strconv.Itoa(int(upstream.Id))} value={strconv.Itoa(int(upstream.Id))}></input>
-            <button hx-delete="/config/delete-upstream" hx-ext="json-enc" hx-swap="afterbegin" hx-include="{{strconv.Itoa(int(upstream.Id))}}">Delete</button>
+            <button type="submit" hx-swap="afterbegin">Delete</button>
+            </form>
         </div>
         }
 }

@@ -2,7 +2,7 @@ package components
 
 templ AddUpstream() {
     
-    <form hx-post="/config/add-upstream" hx-swap="afterend" hx-ext="json-enc">
+    <form hx-post="/config/add-upstream" hx-target="#upstreams-list" hx-swap="innerHTML" hx-ext="json-enc" hx-target-error="#errors">
     <input type="text" id="url" name="url" required/>
     <button type="submit" >Add Upstream</button>
     </form>

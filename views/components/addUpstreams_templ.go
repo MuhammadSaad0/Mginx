@@ -26,7 +26,7 @@ func AddUpstream() templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<form hx-post=\"/config/add-upstream\" hx-swap=\"afterend\" hx-ext=\"json-enc\"><input type=\"text\" id=\"url\" name=\"url\" required> <button type=\"submit\">Add Upstream</button></form>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<form hx-post=\"/config/add-upstream\" hx-target=\"#upstreams-list\" hx-swap=\"innerHTML\" hx-ext=\"json-enc\" hx-target-error=\"#errors\"><input type=\"text\" id=\"url\" name=\"url\" required> <button type=\"submit\">Add Upstream</button></form>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
