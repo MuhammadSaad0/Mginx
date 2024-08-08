@@ -22,6 +22,8 @@ templ BaseLayout() {
             <div id="upstreams-list" hx-get="/config/upstreams" hx-trigger="load, every 10s" hx-swap="innerHTML" style="width: 18.75rem; height: 12.5rem; border: 1px solid #ccc; overflow-y: auto;"></div>
             @components.AddUpstream()
             <div id="errors"></div>
+            <div id="loadBStrat" hx-get="/config/get-load-balancing-strategy" hx-swap="innerHTML" hx-trigger="load every 100s"></div>
+            <div id="loadBStratSelect" hx-get="/config/all-load-balancing-strategies" hx-trigger="load" hx-swap="innerHTML"></div>
         </main>
         <footer>
             <p>&copy; 2024 MGINX.</p>

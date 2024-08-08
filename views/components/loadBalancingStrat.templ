@@ -1,0 +1,11 @@
+package components
+
+type LoadBalancingData struct {
+    Name string
+}
+
+templ LoadBalancingStrat(data LoadBalancingData) {
+    <div>
+        <p>Current Load Balancing Strategy: '{data.Name}'</p>
+    </div>
+}

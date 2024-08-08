@@ -218,6 +218,55 @@ func DeleteUpstream(writer http.ResponseWriter, request *http.Request) {
 	ReturnUpstreams(writer, request)
 }
 
+func CurrentLoadBalancingStrat(writer http.ResponseWriter, request *http.Request) {
+	rwLock.RLock()
+	row, err := configDb.Query("SELECT * FROM SETTINGS WHERE SETTING_NAME='LOAD_BALANCING_STRATEGY'")
+	rwLock.RUnlock()
+	if err != nil {
+		fmt.Println(err.Error())
+		component := components.Message("Unable to Fetch Current Load Balancing Strategy!")
+		component.Render(context.Background(), writer)
+		return
+	}
+	var id interface{}
+	var settingName interface{}
+	var settingValue interface{}
+	row.Next()
+	err = row.Scan(&id, &settingName, &settingValue)
+	if err != nil {
+		fmt.Println(2, err.Error())
+		component := components.Message("Unable to Fetch Current Load Balancing Strategy!")
+		component.Render(context.Background(), writer)
+		return
+	}
+	val := settingValue.(int64)
+	var name string
+	if val == 0 {
+		name = "Use First Upstream"
+	} else if val == 1 {
+		name = "Round Robin Upstream Selection"
+	}
+	defer row.Close()
+	component := components.LoadBalancingStrat(components.LoadBalancingData{Name: name})
+	component.Render(context.Background(), writer)
+}
+
+func LoadBalancingOptions(writer http.ResponseWriter, request *http.Request) {
+	// firstUp := components.LBStratOptions{
+	// 	Id:   0,
+	// 	Name: "Use First Upstream",
+	// }
+	// RR := components.LBStratOptions{
+	// 	Id:   1,
+	// 	Name: "Round Robin Upstream Selection",
+	// }
+	// loader := components.ScriptHolder([]components.LBStratOptions{
+	// 	firstUp,
+	// 	RR,
+	// })
+	// loader.Render(context.Background(), writer)
+}
+
 type updateLoadBalancing struct {
 	Strategy int `json:"strategy"`
 }
@@ -311,7 +360,9 @@ func main() {
 	http.HandleFunc("GET /config/upstreams", ReturnUpstreams)
 	http.HandleFunc("POST /config/add-upstream", AddUpstream)
 	http.HandleFunc("POST /config/delete-upstream", DeleteUpstream)
+	http.HandleFunc("GET /config/get-load-balancing-strategy", CurrentLoadBalancingStrat)
 	http.HandleFunc("PATCH /config/update-load-balancing-strategy", UpdateLoadBalancingStrat)
+	http.HandleFunc("GET /config/all-load-balancing-strategies", LoadBalancingOptions)
 	http.HandleFunc("GET /home", serveHome)
 	// http.Handle("GET /", http.FileServer(http.Dir("./")))
 	http.HandleFunc("/proxy/*", ReverseProxy)
