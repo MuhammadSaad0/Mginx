@@ -372,7 +372,7 @@ func main() {
 	http.HandleFunc("POST /config/update-load-balancing-strategy", UpdateLoadBalancingStrat)
 	http.HandleFunc("GET /config/all-load-balancing-strategies", LoadBalancingOptions)
 	http.HandleFunc("GET /home", serveHome)
-	// http.Handle("GET /", http.FileServer(http.Dir("./")))
+	http.Handle("GET /dist/", http.StripPrefix("/dist/", http.FileServer(http.Dir("./dist"))))
 	http.HandleFunc("/proxy/*", ReverseProxy)
 
 	go healthCheck()
