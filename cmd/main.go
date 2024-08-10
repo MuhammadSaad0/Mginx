@@ -252,23 +252,23 @@ func CurrentLoadBalancingStrat(writer http.ResponseWriter, request *http.Request
 }
 
 func LoadBalancingOptions(writer http.ResponseWriter, request *http.Request) {
-	// firstUp := components.LBStratOptions{
-	// 	Id:   0,
-	// 	Name: "Use First Upstream",
-	// }
-	// RR := components.LBStratOptions{
-	// 	Id:   1,
-	// 	Name: "Round Robin Upstream Selection",
-	// }
-	// loader := components.ScriptHolder([]components.LBStratOptions{
-	// 	firstUp,
-	// 	RR,
-	// })
-	// loader.Render(context.Background(), writer)
+	firstUp := components.SelectStrat{
+		Id:   strconv.Itoa(0),
+		Name: "Use First Upstream",
+	}
+	RR := components.SelectStrat{
+		Id:   strconv.Itoa(1),
+		Name: "Round Robin Upstream Selection",
+	}
+	component := components.SelectLBStrat([]components.SelectStrat{
+		firstUp,
+		RR,
+	})
+	component.Render(context.Background(), writer)
 }
 
 type updateLoadBalancing struct {
-	Strategy int `json:"strategy"`
+	Strategy string `json:"strategy"`
 }
 
 // 0 -> use first upstream url
@@ -280,18 +280,26 @@ func UpdateLoadBalancingStrat(writer http.ResponseWriter, request *http.Request)
 	var err error
 	err = decoder.Decode(&data)
 	if err != nil {
-		fmt.Fprintln(writer, err.Error())
-		return
+		fmt.Println(1, err.Error())
+		component := components.Message("Unable to Update Current Load Balancing Strategy!")
+		component.Render(context.Background(), writer)
 	}
-
+	strat, err := strconv.Atoi(data.Strategy)
+	if err != nil {
+		fmt.Println(2, err.Error())
+		component := components.Message("Unable to Update Current Load Balancing Strategy!")
+		component.Render(context.Background(), writer)
+	}
 	rwLock.Lock()
-	_, err = configDb.Query("UPDATE SETTINGS SET SETTING_VALUE=? WHERE SETTING_NAME='LOAD_BALANCING_STRATEGY'", data.Strategy)
+	_, err = configDb.Exec("UPDATE SETTINGS SET SETTING_VALUE=? WHERE SETTING_NAME='LOAD_BALANCING_STRATEGY'", strat)
 	rwLock.Unlock()
 	if err != nil {
-		fmt.Fprintln(writer, err.Error())
-		return
+		fmt.Println(3, err.Error())
+		component := components.Message("Unable to Update Current Load Balancing Strategy!")
+		component.Render(context.Background(), writer)
 	}
-	fmt.Fprintln(writer, "Load balancing strategy updated")
+	component := components.Message("Load Balancing Strategy Updated!")
+	component.Render(context.Background(), writer)
 }
 
 func serveHome(writer http.ResponseWriter, request *http.Request) {
@@ -361,7 +369,7 @@ func main() {
 	http.HandleFunc("POST /config/add-upstream", AddUpstream)
 	http.HandleFunc("POST /config/delete-upstream", DeleteUpstream)
 	http.HandleFunc("GET /config/get-load-balancing-strategy", CurrentLoadBalancingStrat)
-	http.HandleFunc("PATCH /config/update-load-balancing-strategy", UpdateLoadBalancingStrat)
+	http.HandleFunc("POST /config/update-load-balancing-strategy", UpdateLoadBalancingStrat)
 	http.HandleFunc("GET /config/all-load-balancing-strategies", LoadBalancingOptions)
 	http.HandleFunc("GET /home", serveHome)
 	// http.Handle("GET /", http.FileServer(http.Dir("./")))

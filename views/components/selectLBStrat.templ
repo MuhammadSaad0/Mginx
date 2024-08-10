@@ -1,0 +1,17 @@
+package components
+
+type SelectStrat struct {
+    Id string
+    Name string
+}
+
+templ SelectLBStrat(data []SelectStrat){
+    <form hx-post="/config/update-load-balancing-strategy" hx-ext="json-enc" hx-target-error="#errors" hx-swap="afterend">
+    for _, strat := range data {
+        <div>
+            <p>{strat.Id}   {strat.Name}   <input type="radio" name="Strategy" value={strat.Id}></p>
+        </div>
+    }
+    <button type="Submit">Update</button>
+    </form>
+}

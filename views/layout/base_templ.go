@@ -36,7 +36,7 @@ func BaseLayout() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div id=\"errors\"></div><div id=\"loadBStrat\" hx-get=\"/config/get-load-balancing-strategy\" hx-swap=\"innerHTML\" hx-trigger=\"load every 100s\"></div><div id=\"loadBStratSelect\" hx-get=\"/config/all-load-balancing-strategies\" hx-trigger=\"load\" hx-swap=\"innerHTML\"></div></main><footer><p>&copy; 2024 MGINX.</p></footer></body></html>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div id=\"errors\"></div><div id=\"loadBStrat\" hx-get=\"/config/get-load-balancing-strategy\" hx-swap=\"innerHTML\" hx-trigger=\"load, every 20s\"></div><div id=\"loadBStratSelect\" hx-get=\"/config/all-load-balancing-strategies\" hx-trigger=\"load\" hx-swap=\"innerHTML\"></div></main><footer><p>&copy; 2024 MGINX.</p></footer></body></html>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
