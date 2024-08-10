@@ -553,3 +553,15 @@ video {
   --tw-contain-paint:  ;
   --tw-contain-style:  ;
 }
+
+.flex {
+  display: flex;
+}
+
+.hidden {
+  display: none;
+}
+
+.border {
+  border-width: 1px;
+}
