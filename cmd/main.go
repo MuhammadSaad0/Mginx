@@ -376,6 +376,6 @@ func main() {
 	http.HandleFunc("/proxy/*", ReverseProxy)
 
 	go healthCheck()
-
-	log.Fatal(http.ListenAndServe(":3690", nil))
+	fmt.Println("MGINIX STARTED")
+	log.Fatal(http.ListenAndServe("localhost:3690", nil))
 }

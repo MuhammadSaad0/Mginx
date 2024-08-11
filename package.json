@@ -1,5 +1,8 @@
 {
   "devDependencies": {
     "tailwindcss": "^3.4.9"
+  },
+  "scripts": {
+    "dev": "npx tailwindcss -i ./dist/main.css -o ./dist/tailwind.css && templ generate && go run ./cmd/."
   }
 }
