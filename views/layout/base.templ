@@ -15,22 +15,24 @@ templ BaseLayout() {
     <script src="https://unpkg.com/htmx.org@2.0.1" integrity="sha384-QWGpdj554B4ETpJJC9z+ZHJcA/i59TyjxEPXiiUgN2WmTyV5OEZWCD6gQhgkdpB/" crossorigin="anonymous"></script>
     <script src="https://unpkg.com/htmx.org/dist/ext/json-enc.js"></script>
     <script src="https://unpkg.com/htmx.org@1.9.12/dist/ext/response-targets.js"></script>
-    <body>
-        <header>
-            <h1>MGINX</h1>
+    <body class="overflow-hidden">
+        <header class="text-center py-4">
+            <h1 class="text-2xl font-bold">MGINX</h1>
         </header>
-        <main>
-        <div class="grid grid-cols-1 grid-flow-row text-xl bg-blue-200 items-center justify-items-center justify-center w-screen h-screen">
-            <div id="upstreams-list" hx-get="/config/upstreams" hx-trigger="load, every 10s" hx-swap="innerHTML" style="width: 18.75rem; height: 12.5rem; border: 1px solid #ccc; overflow-y: auto;"></div>
-            @components.AddUpstream()
-            <div id="errors"></div>
-            <div id="loadBStrat" hx-get="/config/get-load-balancing-strategy" hx-swap="innerHTML" hx-trigger="load, every 20s"></div>
-            <div id="loadBStratSelect" hx-get="/config/all-load-balancing-strategies" hx-trigger="load" hx-swap="innerHTML"></div>
-        </div>
+        <main class="grid place-items-center bg-blue-300 w-screen h-screen overflow-hidden">
+            <div class="grid grid-cols-2 gap-4 w-full max-w-screen-lg h-full p-4">
+                <div class="flex flex-col items-center justify-center space-y-4 h-full">
+                    <h2 class="text-lg font-bold text-black mb-4">Upstreams</h2>
+                    <div class="rounded-lg bg-slate-100 h-[60vh] w-[30vw] border border-gray-300 overflow-y-auto" id="upstreams-list" hx-get="/config/upstreams" hx-trigger="load, every 10s" hx-swap="innerHTML"></div>
+                    @components.AddUpstream()
+                    <div id="errors"></div>
+                </div>
+                <div class="flex flex-col items-center justify-center space-y-4 h-full">
+                    <div id="loadBStrat" class="w-full max-w-xs" hx-get="/config/get-load-balancing-strategy" hx-swap="innerHTML" hx-trigger="load, every 20s"></div>
+                    <div id="loadBStratSelect" class="w-full max-w-xs" hx-get="/config/all-load-balancing-strategies" hx-trigger="load" hx-swap="innerHTML"></div>
+                </div>
+            </div>
         </main>
-        <footer>
-            <p>&copy; 2024 MGINX.</p>
-        </footer>
     </body>
     </html>
 }

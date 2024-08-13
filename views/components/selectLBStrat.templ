@@ -6,12 +6,15 @@ type SelectStrat struct {
 }
 
 templ SelectLBStrat(data []SelectStrat){
-    <form hx-post="/config/update-load-balancing-strategy" hx-ext="json-enc" hx-target-error="#errors" hx-swap="afterend">
+    <div class="flex flex-col gap-2 my-0.5">
+    <h3 class="text-black text-center font-bold text-lg">Update Upstream Selection Strategy</h3>
+    <form hx-post="/config/update-load-balancing-strategy" hx-ext="json-enc" hx-target-error="#errors" hx-swap="afterend" class="bg-gray-800 p-2 rounded-lg shadow-lg space-y-4">
     for _, strat := range data {
-        <div>
-            <p>{strat.Id}   {strat.Name}   <input type="radio" name="Strategy" value={strat.Id}></p>
+        <div class="flex flex-col bg-gray-700 p-4 rounded-lg hover:bg-gray-600 transition-colors justify-between">
+            <p class="flex-grow mr-auto text-slate-300">{strat.Name} <input type="radio" name="Strategy" value={strat.Id} class="accent-teal-400 ml-auto"></p>
         </div>
     }
-    <button type="Submit">Update</button>
+    <button type="Submit" class="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-blue-300 transition-transform transform hover:scale-105">Update</button>
     </form>
+    </div>
 }

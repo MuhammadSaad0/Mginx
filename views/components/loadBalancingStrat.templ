@@ -5,7 +5,11 @@ type LoadBalancingData struct {
 }
 
 templ LoadBalancingStrat(data LoadBalancingData) {
-    <div>
-        <p>Current Load Balancing Strategy: '{data.Name}'</p>
+   <div class="bg-gray-900 p-4 rounded-lg shadow-md">
+    <p class="text-lg font-semibold text-gray-300">
+        Current Load Balancing Strategy: 
+        <span class="text-teal-400 font-bold">{data.Name}</span>
+    </p>
     </div>
+
 }

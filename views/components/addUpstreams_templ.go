@@ -26,7 +26,7 @@ func AddUpstream() templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<form hx-post=\"/config/add-upstream\" hx-target=\"#upstreams-list\" hx-swap=\"innerHTML\" hx-ext=\"json-enc\" hx-target-error=\"#errors\"><input type=\"text\" id=\"url\" name=\"url\" required> <button type=\"submit\">Add Upstream</button></form>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<form hx-post=\"/config/add-upstream\" hx-target=\"#upstreams-list\" hx-swap=\"innerHTML\" hx-ext=\"json-enc\" hx-target-error=\"#errors\" class=\"flex justify-center items-center gap-2\"><input type=\"text\" id=\"url\" name=\"url\" required class=\"p-1.5 border border-black-300 rounded-lg overflow-auto flex-grow\"> <button type=\"submit\" class=\"text-white hover:text-slate-200 border border-green-700 hover:bg-white-800 bg-green-800 font-medium rounded-lg text-sm text-center p-2 flex items-center gap-2\"><svg xmlns=\"http://www.w3.org/2000/svg\" fill=\"none\" viewBox=\"0 0 24 24\" stroke-width=\"1.5\" stroke=\"currentColor\" class=\"w-5 h-5\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M12 4.5v15m7.5-7.5h-15\"></path></svg> Add Upstream</button></form>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
