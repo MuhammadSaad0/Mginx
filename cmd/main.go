@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"database/sql"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -52,12 +53,10 @@ func ReverseProxy(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 	rwLock.RUnlock()
-	defer rows.Close()
-
 	rows.Next()
 	var loadBalancingStrat int
 	rows.Scan(&loadBalancingStrat)
-
+	rows.Close()
 	rows, err = configDb.Query("SELECT URL FROM UPSTREAMS")
 	if err != nil {
 		fmt.Fprintln(writer, err.Error())
@@ -88,17 +87,17 @@ func ReverseProxy(writer http.ResponseWriter, request *http.Request) {
 		roundRobinNum := rand.Intn(len(upstreams))
 		data = upstreams[roundRobinNum]
 	}
-
 	url, err := url.Parse(data)
 	if err != nil {
 		fmt.Fprintln(writer, "Error Parsing url")
 		return
 	}
+
 	modifiedRequest.RequestURI = "" // httpRequestUri cant be set in client request
 	modifiedRequest.URL = url
 	modifiedRequest.URL.Path = "/" + strings.Join((strings.Split(path, "/"))[2:], "/")
 	modifiedRequest.URL.RawQuery = query.Encode()
-
+	modifiedRequest.Host = request.URL.Host
 	defaultClient := http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{},
@@ -374,8 +373,10 @@ func main() {
 	http.HandleFunc("GET /home", serveHome)
 	http.Handle("GET /dist/", http.StripPrefix("/dist/", http.FileServer(http.Dir("./dist"))))
 	http.HandleFunc("/proxy/*", ReverseProxy)
-
+	// cert.GenCerts()
+	certFile := flag.String("certfile", "cert.pem", "certificate PEM file")
+	keyFile := flag.String("keyfile", "key.pem", "key PEM file")
 	go healthCheck()
 	fmt.Println("MGINIX STARTED")
-	log.Fatal(http.ListenAndServe("localhost:3690", nil))
+	log.Fatal(http.ListenAndServeTLS("localhost:3690", *certFile, *keyFile, nil))
 }
