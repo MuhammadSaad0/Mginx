@@ -554,6 +554,10 @@ video {
   --tw-contain-style:  ;
 }
 
+.invisible {
+  visibility: hidden;
+}
+
 .my-0\.5 {
   margin-top: 0.125rem;
   margin-bottom: 0.125rem;
@@ -581,6 +585,11 @@ video {
 
 .hidden {
   display: none;
+}
+
+.size-6 {
+  width: 1.5rem;
+  height: 1.5rem;
 }
 
 .h-5 {
@@ -611,16 +620,24 @@ video {
   width: 1.5rem;
 }
 
-.w-\[30vw\] {
-  width: 30vw;
-}
-
 .w-full {
   width: 100%;
 }
 
 .w-screen {
   width: 100vw;
+}
+
+.max-w-\[10\%\] {
+  max-width: 10%;
+}
+
+.max-w-\[20\%\] {
+  max-width: 20%;
+}
+
+.max-w-\[40\%\] {
+  max-width: 40%;
 }
 
 .max-w-screen-lg {
@@ -701,6 +718,14 @@ video {
 
 .overflow-y-auto {
   overflow-y: auto;
+}
+
+.text-ellipsis {
+  text-overflow: ellipsis;
+}
+
+.whitespace-nowrap {
+  white-space: nowrap;
 }
 
 .rounded-lg {
@@ -900,6 +925,11 @@ video {
 .hover\:bg-gray-600:hover {
   --tw-bg-opacity: 1;
   background-color: rgb(75 85 99 / var(--tw-bg-opacity));
+}
+
+.hover\:text-green-500:hover {
+  --tw-text-opacity: 1;
+  color: rgb(34 197 94 / var(--tw-text-opacity));
 }
 
 .hover\:text-red-500:hover {

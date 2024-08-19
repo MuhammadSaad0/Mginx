@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -137,7 +138,8 @@ func ReturnUpstreams(wrriter http.ResponseWriter, request *http.Request) {
 		var upstreamId interface{}
 		var upstreamUrl interface{}
 		var online interface{}
-		err = rows.Scan(&upstreamId, &upstreamUrl, &online)
+		var primary interface{}
+		err = rows.Scan(&upstreamId, &upstreamUrl, &online, &primary)
 		if err != nil {
 			fmt.Fprintln(wrriter, err.Error())
 			return
@@ -146,14 +148,9 @@ func ReturnUpstreams(wrriter http.ResponseWriter, request *http.Request) {
 		finalData.Id = upstreamId.(int64)
 		finalData.Url = upstreamUrl.(string)
 		finalData.Online = online.(int64)
+		finalData.Primary = primary.(int64)
 		toRet = append(toRet, finalData)
 	}
-	// response := make(map[string][]interface{})
-	// if len(toRet) > 0 {
-	// 	response["proxies"] = toRet
-	// } else {
-	// 	response["proxies"] = make([]interface{}, 0)
-	// }
 	components.Upstreams(toRet).Render(context.Background(), wrriter)
 }
 
@@ -172,8 +169,28 @@ func AddUpstream(writer http.ResponseWriter, request *http.Request) {
 		component.Render(context.Background(), writer)
 		return
 	}
+	rwLock.RLock() // CHECK IF FIRST ADDED, MAKE IT PRIMARY
+	rows, err := configDb.Query("SELECT COUNT(id) FROM UPSTREAMS;")
+	if err != nil {
+		component := components.Message("Error Fetching Upstream Count!")
+		component.Render(context.Background(), writer)
+		return
+	}
+	rows.Next()
+	var count interface{}
+	rows.Scan(&count)
+	fmt.Println("COUNT", count, " CHECK:", count == 0, reflect.TypeOf(count))
+	rows.Close()
+	rwLock.RUnlock()
 	rwLock.Lock()
-	_, err = configDb.Exec("INSERT INTO UPSTREAMS (URL) VALUES (?);", data.Url)
+	var insertStatement string
+	if count == int64(0) {
+		insertStatement = "INSERT INTO UPSTREAMS (URL, IS_PRIMARY) VALUES (?, 1);"
+	} else {
+		insertStatement = "INSERT INTO UPSTREAMS (URL) VALUES (?);"
+	}
+	fmt.Println("INSERT STATEMENT", insertStatement)
+	_, err = configDb.Exec(insertStatement, data.Url)
 	rwLock.Unlock()
 	if err != nil {
 		component := components.Message("Error Adding Upstream")
@@ -241,7 +258,7 @@ func CurrentLoadBalancingStrat(writer http.ResponseWriter, request *http.Request
 	val := settingValue.(int64)
 	var name string
 	if val == 0 {
-		name = "Use First Upstream"
+		name = "Use Primary"
 	} else if val == 1 {
 		name = "Round Robin Upstream Selection"
 	}
@@ -251,16 +268,16 @@ func CurrentLoadBalancingStrat(writer http.ResponseWriter, request *http.Request
 }
 
 func LoadBalancingOptions(writer http.ResponseWriter, request *http.Request) {
-	firstUp := components.SelectStrat{
+	primary := components.SelectStrat{
 		Id:   strconv.Itoa(0),
-		Name: "Use First Upstream",
+		Name: "Use Primary",
 	}
 	RR := components.SelectStrat{
 		Id:   strconv.Itoa(1),
 		Name: "Round Robin Upstream Selection",
 	}
 	component := components.SelectLBStrat([]components.SelectStrat{
-		firstUp,
+		primary,
 		RR,
 	})
 	component.Render(context.Background(), writer)
@@ -270,7 +287,7 @@ type updateLoadBalancing struct {
 	Strategy string `json:"strategy"`
 }
 
-// 0 -> use first upstream url
+// 0 -> use primary
 // 1 -> round robin upstream selection
 func UpdateLoadBalancingStrat(writer http.ResponseWriter, request *http.Request) {
 	decoder := json.NewDecoder(request.Body)
@@ -279,13 +296,11 @@ func UpdateLoadBalancingStrat(writer http.ResponseWriter, request *http.Request)
 	var err error
 	err = decoder.Decode(&data)
 	if err != nil {
-		fmt.Println(1, err.Error())
 		component := components.Message("Unable to Update Current Load Balancing Strategy!")
 		component.Render(context.Background(), writer)
 	}
 	strat, err := strconv.Atoi(data.Strategy)
 	if err != nil {
-		fmt.Println(2, err.Error())
 		component := components.Message("Unable to Update Current Load Balancing Strategy!")
 		component.Render(context.Background(), writer)
 	}
@@ -301,12 +316,45 @@ func UpdateLoadBalancingStrat(writer http.ResponseWriter, request *http.Request)
 	component.Render(context.Background(), writer)
 }
 
-func serveHome(writer http.ResponseWriter, request *http.Request) {
+type setPrimary struct {
+	Id string `json:"id"`
+}
+
+func SetPrimary(writer http.ResponseWriter, request *http.Request) {
+	decoder := json.NewDecoder(request.Body)
+	defer request.Body.Close()
+	var data setPrimary
+	err := decoder.Decode(&data)
+	if err != nil {
+		component := components.Message("Unable to Set Primary!")
+		component.Render(context.Background(), writer)
+	}
+	_, err = configDb.Exec("UPDATE UPSTREAMS SET IS_PRIMARY = 0 WHERE IS_PRIMARY = 1")
+	if err != nil {
+		component := components.Message("Error Removing Old Primary!")
+		component.Render(context.Background(), writer)
+	}
+	id, err := strconv.Atoi(data.Id)
+	if err != nil {
+		component := components.Message("Error Converting id to int!")
+		component.Render(context.Background(), writer)
+	}
+	_, err = configDb.Exec("UPDATE UPSTREAMS SET IS_PRIMARY = 1 WHERE ID = ?", id)
+	if err != nil {
+		component := components.Message("Error Adding New Primary!")
+		component.Render(context.Background(), writer)
+	}
+
+	component := components.Message("Primary Updated")
+	component.Render(context.Background(), writer)
+}
+
+func ServeHome(writer http.ResponseWriter, request *http.Request) {
 	component := layout.BaseLayout()
 	component.Render(context.Background(), writer)
 }
 
-func healthCheck() {
+func HealthCheck() {
 	ticker := time.NewTicker(time.Second * 20) // health check period needs to be from settings
 	for range ticker.C {
 		rwLock.RLock()
@@ -349,7 +397,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, err.Error())
 	}
 	configDb.SetMaxOpenConns(1)
-	upstreamsStatement := "CREATE TABLE IF NOT EXISTS UPSTREAMS (ID INTEGER PRIMARY KEY, URL STRING, ONLINE INTEGER DEFAULT 0 NOT NULL);"                                                                    // initialize config table
+	upstreamsStatement := "CREATE TABLE IF NOT EXISTS UPSTREAMS (ID INTEGER PRIMARY KEY, URL STRING, ONLINE INTEGER DEFAULT 0 NOT NULL, IS_PRIMARY INTEGER DEFAULT 0 NOT NULL);"                             // initialize config table
 	settingsStatement := "CREATE TABLE IF NOT EXISTS SETTINGS (ID INTEGER PRIMARY KEY, SETTING_NAME STRING, SETTING_VALUE INT); INSERT OR IGNORE INTO SETTINGS VALUES (NULL, 'LOAD_BALANCING_STRATEGY', 0);" // initialize settings table
 
 	rwLock.Lock()
@@ -367,16 +415,17 @@ func main() {
 	http.HandleFunc("GET /config/upstreams", ReturnUpstreams)
 	http.HandleFunc("POST /config/add-upstream", AddUpstream)
 	http.HandleFunc("POST /config/delete-upstream", DeleteUpstream)
+	http.HandleFunc("POST /config/set-primary", SetPrimary)
 	http.HandleFunc("GET /config/get-load-balancing-strategy", CurrentLoadBalancingStrat)
 	http.HandleFunc("POST /config/update-load-balancing-strategy", UpdateLoadBalancingStrat)
 	http.HandleFunc("GET /config/all-load-balancing-strategies", LoadBalancingOptions)
-	http.HandleFunc("GET /home", serveHome)
+	http.HandleFunc("GET /home", ServeHome)
 	http.Handle("GET /dist/", http.StripPrefix("/dist/", http.FileServer(http.Dir("./dist"))))
 	http.HandleFunc("/proxy/*", ReverseProxy)
 	// cert.GenCerts()
 	certFile := flag.String("certfile", "cert.pem", "certificate PEM file")
 	keyFile := flag.String("keyfile", "key.pem", "key PEM file")
-	go healthCheck()
+	go HealthCheck()
 	fmt.Println("MGINIX STARTED")
 	log.Fatal(http.ListenAndServeTLS("localhost:3690", *certFile, *keyFile, nil))
 }
