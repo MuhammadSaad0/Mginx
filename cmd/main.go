@@ -58,22 +58,27 @@ func ReverseProxy(writer http.ResponseWriter, request *http.Request) {
 	var loadBalancingStrat int
 	rows.Scan(&loadBalancingStrat)
 	rows.Close()
-	rows, err = configDb.Query("SELECT URL FROM UPSTREAMS")
-	if err != nil {
-		fmt.Fprintln(writer, err.Error())
-		return
-	}
-	defer rows.Close()
 	var data string
-	if loadBalancingStrat == 0 { // just use first url
+	if loadBalancingStrat == 0 { // use primary
+		rows, err = configDb.Query("SELECT URL FROM UPSTREAMS WHERE IS_PRIMARY=1")
+		if err != nil {
+			fmt.Fprintln(writer, err.Error())
+			return
+		}
 		rows.Next()
 		err = rows.Scan(&data)
+		rows.Close()
 		if err != nil {
 			fmt.Fprintln(writer, err.Error())
 			return
 		}
 
 	} else if loadBalancingStrat == 1 { // round robin
+		rows, err = configDb.Query("SELECT URL FROM UPSTREAMS")
+		if err != nil {
+			fmt.Fprintln(writer, err.Error())
+			return
+		}
 		upstreams := make([]string, 0, 10)
 
 		for rows.Next() {
@@ -84,7 +89,7 @@ func ReverseProxy(writer http.ResponseWriter, request *http.Request) {
 			}
 			upstreams = append(upstreams, data)
 		}
-
+		rows.Close()
 		roundRobinNum := rand.Intn(len(upstreams))
 		data = upstreams[roundRobinNum]
 	}
