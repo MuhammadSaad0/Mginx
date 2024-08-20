@@ -2,23 +2,19 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
 	"database/sql"
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io"
 	"log"
-	"math/rand"
+	"mginx/internals/db"
+	"mginx/internals/proxy"
 	"mginx/views/components"
 	"mginx/views/layout"
 	"net/http"
-	"net/url"
 	"os"
 	"reflect"
 	"strconv"
-	"strings"
-	"sync"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -35,104 +31,13 @@ import (
 8) Metrics MEDIUM
 */
 
-var configDb *sql.DB
-var rwLock = sync.RWMutex{}
-
-func ReverseProxy(writer http.ResponseWriter, request *http.Request) {
-	// copy incoming request
-	modifiedRequest := request.Clone(context.Background())
-	path := request.URL.Path
-	query := request.URL.Query()
-
-	var rows *sql.Rows
-	var err error
-	rwLock.RLock()
-	rows, err = configDb.Query("SELECT SETTING_VALUE FROM SETTINGS WHERE SETTING_NAME='LOAD_BALANCING_STRATEGY';")
-	if err != nil {
-		rwLock.RUnlock()
-		fmt.Fprintln(writer, err.Error())
-		return
-	}
-	rwLock.RUnlock()
-	rows.Next()
-	var loadBalancingStrat int
-	rows.Scan(&loadBalancingStrat)
-	rows.Close()
-	var data string
-	if loadBalancingStrat == 0 { // use primary
-		rows, err = configDb.Query("SELECT URL FROM UPSTREAMS WHERE IS_PRIMARY=1")
-		if err != nil {
-			fmt.Fprintln(writer, err.Error())
-			return
-		}
-		rows.Next()
-		err = rows.Scan(&data)
-		rows.Close()
-		if err != nil {
-			fmt.Fprintln(writer, err.Error())
-			return
-		}
-
-	} else if loadBalancingStrat == 1 { // round robin
-		rows, err = configDb.Query("SELECT URL FROM UPSTREAMS")
-		if err != nil {
-			fmt.Fprintln(writer, err.Error())
-			return
-		}
-		upstreams := make([]string, 0, 10)
-
-		for rows.Next() {
-			err = rows.Scan(&data)
-			if err != nil {
-				fmt.Fprintln(writer, err.Error())
-				return
-			}
-			upstreams = append(upstreams, data)
-		}
-		rows.Close()
-		roundRobinNum := rand.Intn(len(upstreams))
-		data = upstreams[roundRobinNum]
-	}
-	url, err := url.Parse(data)
-	if err != nil {
-		fmt.Fprintln(writer, "Error Parsing url")
-		return
-	}
-
-	modifiedRequest.RequestURI = "" // httpRequestUri cant be set in client request
-	modifiedRequest.URL = url
-	modifiedRequest.URL.Path = "/" + strings.Join((strings.Split(path, "/"))[2:], "/")
-	modifiedRequest.URL.RawQuery = query.Encode()
-	modifiedRequest.Host = request.URL.Host
-	defaultClient := http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{},
-		},
-	}
-	response, err := defaultClient.Do(modifiedRequest) // perform http request
-	if err != nil {
-		fmt.Fprintf(writer, "Error sending request %s", err.Error())
-		return
-	}
-	defer response.Body.Close()                // close body to make sure socket isnt left hanging
-	for key, values := range response.Header { // write response headers to writer
-		for _, value := range values {
-			writer.Header().Add(key, value)
-		}
-	}
-	writer.WriteHeader(response.StatusCode) // write response status code to writer
-
-	io.Copy(writer, response.Body) // copy response body to writer
-
-}
-
 func ReturnUpstreams(wrriter http.ResponseWriter, request *http.Request) {
 	// returns data for all upstream servers
 	var toRet []components.UpstreamsProp
 	queryStatement := "SELECT * FROM UPSTREAMS"
-	rwLock.RLock()
-	rows, err := configDb.Query(queryStatement)
-	rwLock.RUnlock()
+	db.RwLock.RLock()
+	rows, err := db.ConfigDb.Query(queryStatement)
+	db.RwLock.RUnlock()
 
 	if err != nil {
 		fmt.Fprintln(wrriter, err.Error())
@@ -174,8 +79,8 @@ func AddUpstream(writer http.ResponseWriter, request *http.Request) {
 		component.Render(context.Background(), writer)
 		return
 	}
-	rwLock.RLock() // CHECK IF FIRST ADDED, MAKE IT PRIMARY
-	rows, err := configDb.Query("SELECT COUNT(id) FROM UPSTREAMS;")
+	db.RwLock.RLock() // CHECK IF FIRST ADDED, MAKE IT PRIMARY
+	rows, err := db.ConfigDb.Query("SELECT COUNT(id) FROM UPSTREAMS;")
 	if err != nil {
 		component := components.Message("Error Fetching Upstream Count!")
 		component.Render(context.Background(), writer)
@@ -186,8 +91,8 @@ func AddUpstream(writer http.ResponseWriter, request *http.Request) {
 	rows.Scan(&count)
 	fmt.Println("COUNT", count, " CHECK:", count == 0, reflect.TypeOf(count))
 	rows.Close()
-	rwLock.RUnlock()
-	rwLock.Lock()
+	db.RwLock.RUnlock()
+	db.RwLock.Lock()
 	var insertStatement string
 	if count == int64(0) {
 		insertStatement = "INSERT INTO UPSTREAMS (URL, IS_PRIMARY) VALUES (?, 1);"
@@ -195,8 +100,8 @@ func AddUpstream(writer http.ResponseWriter, request *http.Request) {
 		insertStatement = "INSERT INTO UPSTREAMS (URL) VALUES (?);"
 	}
 	fmt.Println("INSERT STATEMENT", insertStatement)
-	_, err = configDb.Exec(insertStatement, data.Url)
-	rwLock.Unlock()
+	_, err = db.ConfigDb.Exec(insertStatement, data.Url)
+	db.RwLock.Unlock()
 	if err != nil {
 		component := components.Message("Error Adding Upstream")
 		component.Render(context.Background(), writer)
@@ -227,9 +132,9 @@ func DeleteUpstream(writer http.ResponseWriter, request *http.Request) {
 		component.Render(context.Background(), writer)
 		return
 	}
-	rwLock.Lock()
-	_, err = configDb.Exec("DELETE FROM UPSTREAMS WHERE ID = ?", id)
-	rwLock.Unlock()
+	db.RwLock.Lock()
+	_, err = db.ConfigDb.Exec("DELETE FROM UPSTREAMS WHERE ID = ?", id)
+	db.RwLock.Unlock()
 
 	if err != nil {
 		component := components.Message("Unable to Delete Upstream!")
@@ -240,9 +145,9 @@ func DeleteUpstream(writer http.ResponseWriter, request *http.Request) {
 }
 
 func CurrentLoadBalancingStrat(writer http.ResponseWriter, request *http.Request) {
-	rwLock.RLock()
-	row, err := configDb.Query("SELECT * FROM SETTINGS WHERE SETTING_NAME='LOAD_BALANCING_STRATEGY'")
-	rwLock.RUnlock()
+	db.RwLock.RLock()
+	row, err := db.ConfigDb.Query("SELECT * FROM SETTINGS WHERE SETTING_NAME='LOAD_BALANCING_STRATEGY'")
+	db.RwLock.RUnlock()
 	if err != nil {
 		fmt.Println(err.Error())
 		component := components.Message("Unable to Fetch Current Load Balancing Strategy!")
@@ -309,9 +214,9 @@ func UpdateLoadBalancingStrat(writer http.ResponseWriter, request *http.Request)
 		component := components.Message("Unable to Update Current Load Balancing Strategy!")
 		component.Render(context.Background(), writer)
 	}
-	rwLock.Lock()
-	_, err = configDb.Exec("UPDATE SETTINGS SET SETTING_VALUE=? WHERE SETTING_NAME='LOAD_BALANCING_STRATEGY'", strat)
-	rwLock.Unlock()
+	db.RwLock.Lock()
+	_, err = db.ConfigDb.Exec("UPDATE SETTINGS SET SETTING_VALUE=? WHERE SETTING_NAME='LOAD_BALANCING_STRATEGY'", strat)
+	db.RwLock.Unlock()
 	if err != nil {
 		fmt.Println(3, err.Error())
 		component := components.Message("Unable to Update Current Load Balancing Strategy!")
@@ -334,7 +239,7 @@ func SetPrimary(writer http.ResponseWriter, request *http.Request) {
 		component := components.Message("Unable to Set Primary!")
 		component.Render(context.Background(), writer)
 	}
-	_, err = configDb.Exec("UPDATE UPSTREAMS SET IS_PRIMARY = 0 WHERE IS_PRIMARY = 1")
+	_, err = db.ConfigDb.Exec("UPDATE UPSTREAMS SET IS_PRIMARY = 0 WHERE IS_PRIMARY = 1")
 	if err != nil {
 		component := components.Message("Error Removing Old Primary!")
 		component.Render(context.Background(), writer)
@@ -344,7 +249,7 @@ func SetPrimary(writer http.ResponseWriter, request *http.Request) {
 		component := components.Message("Error Converting id to int!")
 		component.Render(context.Background(), writer)
 	}
-	_, err = configDb.Exec("UPDATE UPSTREAMS SET IS_PRIMARY = 1 WHERE ID = ?", id)
+	_, err = db.ConfigDb.Exec("UPDATE UPSTREAMS SET IS_PRIMARY = 1 WHERE ID = ?", id)
 	if err != nil {
 		component := components.Message("Error Adding New Primary!")
 		component.Render(context.Background(), writer)
@@ -362,14 +267,14 @@ func ServeHome(writer http.ResponseWriter, request *http.Request) {
 func HealthCheck() {
 	ticker := time.NewTicker(time.Second * 20) // health check period needs to be from settings
 	for range ticker.C {
-		rwLock.RLock()
-		rows, err := configDb.Query("SELECT URL FROM UPSTREAMS;")
+		db.RwLock.RLock()
+		rows, err := db.ConfigDb.Query("SELECT URL FROM UPSTREAMS;")
 		if err != nil {
-			rwLock.RUnlock()
+			db.RwLock.RUnlock()
 			fmt.Println("HealthCheck error: ", err.Error())
 			break
 		}
-		rwLock.RUnlock()
+		db.RwLock.RUnlock()
 		upstreamUpdate := make(map[string]int)
 		for rows.Next() { // since max connections is set to one, cant perform updates inside rows Next0! Took really long to debug why server kept hanging.
 			var data string
@@ -388,34 +293,34 @@ func HealthCheck() {
 		}
 		rows.Close()
 		for upstream, value := range upstreamUpdate {
-			rwLock.Lock()
-			configDb.Exec("UPDATE UPSTREAMS SET ONLINE = ? WHERE URL = ?", value, upstream)
-			rwLock.Unlock()
+			db.RwLock.Lock()
+			db.ConfigDb.Exec("UPDATE UPSTREAMS SET ONLINE = ? WHERE URL = ?", value, upstream)
+			db.RwLock.Unlock()
 		}
 	}
 }
 
 func main() {
 	var err error
-	configDb, err = sql.Open("sqlite", "config.db:locked.sqlite?cache=shared") // issue 209 golang sqlite interface
+	db.ConfigDb, err = sql.Open("sqlite", "config.db:locked.sqlite?cache=shared") // issue 209 golang sqlite interface
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 	}
-	configDb.SetMaxOpenConns(1)
+	db.ConfigDb.SetMaxOpenConns(1)
 	upstreamsStatement := "CREATE TABLE IF NOT EXISTS UPSTREAMS (ID INTEGER PRIMARY KEY, URL STRING, ONLINE INTEGER DEFAULT 0 NOT NULL, IS_PRIMARY INTEGER DEFAULT 0 NOT NULL);"                             // initialize config table
 	settingsStatement := "CREATE TABLE IF NOT EXISTS SETTINGS (ID INTEGER PRIMARY KEY, SETTING_NAME STRING, SETTING_VALUE INT); INSERT OR IGNORE INTO SETTINGS VALUES (NULL, 'LOAD_BALANCING_STRATEGY', 0);" // initialize settings table
 
-	rwLock.Lock()
-	_, err = configDb.Exec(upstreamsStatement)
+	db.RwLock.Lock()
+	_, err = db.ConfigDb.Exec(upstreamsStatement)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 	}
 
-	_, err = configDb.Exec(settingsStatement)
+	_, err = db.ConfigDb.Exec(settingsStatement)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 	}
-	rwLock.Unlock()
+	db.RwLock.Unlock()
 
 	http.HandleFunc("GET /config/upstreams", ReturnUpstreams)
 	http.HandleFunc("POST /config/add-upstream", AddUpstream)
@@ -426,7 +331,7 @@ func main() {
 	http.HandleFunc("GET /config/all-load-balancing-strategies", LoadBalancingOptions)
 	http.HandleFunc("GET /home", ServeHome)
 	http.Handle("GET /dist/", http.StripPrefix("/dist/", http.FileServer(http.Dir("./dist"))))
-	http.HandleFunc("/proxy/*", ReverseProxy)
+	http.HandleFunc("/proxy/*", proxy.ReverseProxy)
 	// cert.GenCerts()
 	certFile := flag.String("certfile", "cert.pem", "certificate PEM file")
 	keyFile := flag.String("keyfile", "key.pem", "key PEM file")
