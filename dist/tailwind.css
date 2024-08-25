@@ -636,8 +636,12 @@ video {
   max-width: 20%;
 }
 
-.max-w-\[40\%\] {
-  max-width: 40%;
+.max-w-\[35\%\] {
+  max-width: 35%;
+}
+
+.max-w-\[5\%\] {
+  max-width: 5%;
 }
 
 .max-w-screen-lg {

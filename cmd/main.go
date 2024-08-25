@@ -18,6 +18,10 @@ import (
 	_ "modernc.org/sqlite"
 )
 
+// RETURN FROM HANDLER WHEN ERROR COMPONENT RENDERED
+// DONT KEEP FETCHING, RETURN UPSTREAM LIST UPON CHANGE
+// HX-SWAP TARGET FOR ERRORS
+
 func ServeHome(writer http.ResponseWriter, request *http.Request) {
 	component := layout.BaseLayout()
 	component.Render(context.Background(), writer)
@@ -30,8 +34,8 @@ func main() {
 		fmt.Fprintln(os.Stderr, err.Error())
 	}
 	db.ConfigDb.SetMaxOpenConns(1)
-	upstreamsStatement := "CREATE TABLE IF NOT EXISTS UPSTREAMS (ID INTEGER PRIMARY KEY, URL STRING, ONLINE INTEGER DEFAULT 0 NOT NULL, IS_PRIMARY INTEGER DEFAULT 0 NOT NULL);"                             // initialize config table
-	settingsStatement := "CREATE TABLE IF NOT EXISTS SETTINGS (ID INTEGER PRIMARY KEY, SETTING_NAME STRING, SETTING_VALUE INT); INSERT OR IGNORE INTO SETTINGS VALUES (NULL, 'LOAD_BALANCING_STRATEGY', 0);" // initialize settings table
+	upstreamsStatement := "CREATE TABLE IF NOT EXISTS UPSTREAMS (ID INTEGER PRIMARY KEY, URL STRING, ONLINE INTEGER DEFAULT 0 NOT NULL, IS_PRIMARY INTEGER DEFAULT 0 NOT NULL, SHADOW INTEGER DEFAULT 0 NOT NULL);" // initialize config table
+	settingsStatement := "CREATE TABLE IF NOT EXISTS SETTINGS (ID INTEGER PRIMARY KEY, SETTING_NAME STRING, SETTING_VALUE INT); INSERT OR IGNORE INTO SETTINGS VALUES (NULL, 'LOAD_BALANCING_STRATEGY', 0);"        // initialize settings table
 
 	db.RwLock.Lock()
 	_, err = db.ConfigDb.Exec(upstreamsStatement)
@@ -49,6 +53,7 @@ func main() {
 	http.HandleFunc("POST /config/add-upstream", upstreams.AddUpstream)
 	http.HandleFunc("POST /config/delete-upstream", upstreams.DeleteUpstream)
 	http.HandleFunc("POST /config/set-primary", upstreams.SetPrimary)
+	http.HandleFunc("POST /config/toggle-shadow", upstreams.ToggleShadow)
 	http.HandleFunc("GET /config/get-load-balancing-strategy", loadbalancing.CurrentLoadBalancingStrat)
 	http.HandleFunc("POST /config/update-load-balancing-strategy", loadbalancing.UpdateLoadBalancingStrat)
 	http.HandleFunc("GET /config/all-load-balancing-strategies", loadbalancing.LoadBalancingOptions)

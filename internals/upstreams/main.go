@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"mginx/internals/db"
+	"mginx/internals/types"
 	"mginx/views/components"
 	"net/http"
-	"reflect"
 	"strconv"
 
 	_ "modernc.org/sqlite"
@@ -15,7 +15,7 @@ import (
 
 func ReturnUpstreams(wrriter http.ResponseWriter, request *http.Request) {
 	// returns data for all upstream servers
-	var toRet []components.UpstreamsProp
+	var toRet []types.UpstreamRow
 	queryStatement := "SELECT * FROM UPSTREAMS"
 	db.RwLock.RLock()
 	rows, err := db.ConfigDb.Query(queryStatement)
@@ -27,21 +27,13 @@ func ReturnUpstreams(wrriter http.ResponseWriter, request *http.Request) {
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var upstreamId interface{}
-		var upstreamUrl interface{}
-		var online interface{}
-		var primary interface{}
-		err = rows.Scan(&upstreamId, &upstreamUrl, &online, &primary)
+		var upstream types.UpstreamRow
+		err = rows.Scan(&upstream.UpstreamId, &upstream.UpstreamUrl, &upstream.Online, &upstream.Primary, &upstream.Shadow)
 		if err != nil {
 			fmt.Fprintln(wrriter, err.Error())
 			return
 		}
-		var finalData components.UpstreamsProp
-		finalData.Id = upstreamId.(int64)
-		finalData.Url = upstreamUrl.(string)
-		finalData.Online = online.(int64)
-		finalData.Primary = primary.(int64)
-		toRet = append(toRet, finalData)
+		toRet = append(toRet, upstream)
 	}
 	components.Upstreams(toRet).Render(context.Background(), wrriter)
 }
@@ -71,17 +63,15 @@ func AddUpstream(writer http.ResponseWriter, request *http.Request) {
 	rows.Next()
 	var count interface{}
 	rows.Scan(&count)
-	fmt.Println("COUNT", count, " CHECK:", count == 0, reflect.TypeOf(count))
 	rows.Close()
 	db.RwLock.RUnlock()
 	db.RwLock.Lock()
 	var insertStatement string
 	if count == int64(0) {
-		insertStatement = "INSERT INTO UPSTREAMS (URL, IS_PRIMARY) VALUES (?, 1);"
+		insertStatement = "INSERT INTO UPSTREAMS (URL, IS_PRIMARY, SHADOW) VALUES (?, 1, 0);"
 	} else {
 		insertStatement = "INSERT INTO UPSTREAMS (URL) VALUES (?);"
 	}
-	fmt.Println("INSERT STATEMENT", insertStatement)
 	_, err = db.ConfigDb.Exec(insertStatement, data.Url)
 	db.RwLock.Unlock()
 	if err != nil {
@@ -157,4 +147,49 @@ func SetPrimary(writer http.ResponseWriter, request *http.Request) {
 
 	component := components.Message("Primary Updated")
 	component.Render(context.Background(), writer)
+}
+
+type toggleShadow struct {
+	Id string `json:"id"`
+}
+
+func ToggleShadow(writer http.ResponseWriter, request *http.Request) {
+	decoder := json.NewDecoder(request.Body)
+	defer request.Body.Close()
+	var data toggleShadow
+	err := decoder.Decode(&data)
+	if err != nil {
+		component := components.Message("Unable to Set as Shadow!")
+		component.Render(context.Background(), writer)
+	}
+	id, err := strconv.Atoi(data.Id)
+	if err != nil {
+		component := components.Message("Unable to Set as Shadow!")
+		component.Render(context.Background(), writer)
+	}
+	rows, err := db.ConfigDb.Query("SELECT SHADOW FROM UPSTREAMS WHERE ID = ?", id)
+	if err != nil {
+		component := components.Message("Unable to Set as Shadow!")
+		component.Render(context.Background(), writer)
+	}
+	var currentShadow int64
+	rows.Next()
+	err = rows.Scan(&currentShadow)
+	rows.Close()
+	if err != nil {
+		component := components.Message("Unable to Set as Shadow!")
+		component.Render(context.Background(), writer)
+	}
+	var newShadow int64
+	if currentShadow == 0 {
+		newShadow = 1
+	} else {
+		newShadow = 0
+	}
+	_, err = db.ConfigDb.Exec("UPDATE UPSTREAMS SET SHADOW = ? WHERE ID = ?", newShadow, id)
+	if err != nil {
+		component := components.Message("Unable to Set as Shadow!")
+		component.Render(context.Background(), writer)
+	}
+	ReturnUpstreams(writer, request)
 }
