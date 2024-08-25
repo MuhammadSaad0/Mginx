@@ -36,7 +36,7 @@ func main() {
 	db.ConfigDb.SetMaxOpenConns(1)
 	upstreamsStatement := "CREATE TABLE IF NOT EXISTS UPSTREAMS (ID INTEGER PRIMARY KEY, URL STRING, ONLINE INTEGER DEFAULT 0 NOT NULL, IS_PRIMARY INTEGER DEFAULT 0 NOT NULL, SHADOW INTEGER DEFAULT 0 NOT NULL);" // initialize config table
 	settingsStatement := "CREATE TABLE IF NOT EXISTS SETTINGS (ID INTEGER PRIMARY KEY, SETTING_NAME STRING, SETTING_VALUE INT); INSERT OR IGNORE INTO SETTINGS VALUES (NULL, 'LOAD_BALANCING_STRATEGY', 0);"        // initialize settings table
-
+	shadowEndpointsStatement := "CREATE TABLE IF NOT EXISTS SHADOW_ENDPOINTS (ID INTEGER PRIMARY KEY, ENDPOINT STRING NOT NULL);"
 	db.RwLock.Lock()
 	_, err = db.ConfigDb.Exec(upstreamsStatement)
 	if err != nil {
@@ -47,10 +47,18 @@ func main() {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 	}
+
+	_, err = db.ConfigDb.Exec(shadowEndpointsStatement)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+	}
+
 	db.RwLock.Unlock()
 
 	http.HandleFunc("GET /config/upstreams", upstreams.ReturnUpstreams)
+	http.HandleFunc("GET /config/shadow-endpoint", upstreams.ReturnShadowEndpoints)
 	http.HandleFunc("POST /config/add-upstream", upstreams.AddUpstream)
+	http.HandleFunc("POST /config/add-shadow-endpoint", upstreams.AddShadowEndpoint)
 	http.HandleFunc("POST /config/delete-upstream", upstreams.DeleteUpstream)
 	http.HandleFunc("POST /config/set-primary", upstreams.SetPrimary)
 	http.HandleFunc("POST /config/toggle-shadow", upstreams.ToggleShadow)

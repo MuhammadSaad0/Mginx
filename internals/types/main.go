@@ -7,3 +7,8 @@ type UpstreamRow struct {
 	Primary     int64
 	Shadow      int64
 }
+
+type ShadowEndpointRow struct {
+	Id       int64
+	Endpoint string
+}

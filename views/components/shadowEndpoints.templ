@@ -1,0 +1,25 @@
+package components
+
+import "mginx/internals/types"
+
+templ ShadowEndpoints(data []types.ShadowEndpointRow){
+        if len(data) == 0 {
+            <div>
+                <p>No Shadow Endpoints Added!</p>
+            </div>
+        }
+        <div class="flex flex-row justify-center w-full mb-4">
+            <span class="text-lg font-semibold text-gray-700 text-center tracking-wide">
+                Endpoint
+            </span>
+        </div>
+        for _, shadow := range data {
+        <div class="flex flex-col justify-center items-center bg-gray-800 p-4 rounded-xs shadow-lg hover:shadow-2xl transition-shadow duration-300">
+            <form class="flex w-full justify-center items-center space-x-4 bg-gray-700 p-3 rounded-xs border border-gray-600 shadow-md">
+                <span id="id" class="text-md font-semibold text-gray-300 text-center overflow-hidden text-ellipsis whitespace-nowrap" title="{shadow.Endpoint}">
+                    {shadow.Endpoint}
+                </span>
+            </form>
+        </div>
+        }
+}

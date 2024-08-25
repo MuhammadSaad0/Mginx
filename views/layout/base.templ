@@ -19,17 +19,24 @@ templ BaseLayout() {
         <header class="text-center py-4">
             <h1 class="text-2xl font-bold">MGINX</h1>
         </header>
-        <main class="grid place-items-center bg-blue-300 w-screen h-screen overflow-hidden">
-            <div class="grid grid-cols-2 gap-4 w-full max-w-screen-lg h-full p-4">
-                <div class="flex flex-col items-center justify-center space-y-4 h-full">
-                    <h2 class="text-lg font-bold text-black mb-4">Upstreams</h2>
+        <main class="bg-blue-300 w-screen h-screen overflow-hidden">
+            <div class="grid grid-cols-[80%_32%_28%] gap-4 w-full max-w-screen-lg h-full p-4">
+                <!-- Upstreams List Column -->
+                <div class="flex flex-col items-start justify-center space-y-2 h-full ml-1">
+                    <h2 class="text-lg font-bold text-black mb-4 text-center ml-auto mr-auto">Upstreams</h2>
                     <div class="rounded-lg bg-slate-100 h-[60vh] w-full border border-gray-300 overflow-y-auto" id="upstreams-list" hx-get="/config/upstreams" hx-trigger="load, every 5s" hx-swap="innerHTML"></div>
                     @components.AddUpstream()
                     <div id="errors"></div>
                 </div>
-                <div class="flex flex-col items-center justify-center space-y-4 h-full">
-                    <div id="loadBStrat" class="w-full max-w-xs" hx-get="/config/get-load-balancing-strategy" hx-swap="innerHTML" hx-trigger="load, every 20s"></div>
-                    <div id="loadBStratSelect" class="w-full max-w-xs" hx-get="/config/all-load-balancing-strategies" hx-trigger="load" hx-swap="innerHTML"></div>
+                <!-- Load Balancing Strategy Column -->
+                <div class="flex flex-col items-center justify-center ml-10 space-y-4 h-full">
+                    <div id="loadBStrat" class="w-full max-w-md" hx-get="/config/get-load-balancing-strategy" hx-swap="innerHTML" hx-trigger="load, every 20s"></div>
+                    <div id="loadBStratSelect" class="w-full max-w-md" hx-get="/config/all-load-balancing-strategies" hx-trigger="load" hx-swap="innerHTML"></div>
+                </div>
+                <!-- Shadow Endpoints Column -->
+                <div class="flex flex-col items-center justify-center space-y-4 h-full ml-12">
+                    <div id="shadowEndpoints-list" class="w-full max-w-md overflow-y-auto max-h-[50%]" hx-get="/config/shadow-endpoint" hx-swap="innerHTML" hx-trigger="load"></div>
+                    @components.AddShadowEndpoint()
                 </div>
             </div>
         </main>

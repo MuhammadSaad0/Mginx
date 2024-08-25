@@ -193,3 +193,41 @@ func ToggleShadow(writer http.ResponseWriter, request *http.Request) {
 	}
 	ReturnUpstreams(writer, request)
 }
+
+type addShadowEndpoint struct {
+	Url string `json:"url"`
+}
+
+func AddShadowEndpoint(writer http.ResponseWriter, request *http.Request) {
+	decoder := json.NewDecoder(request.Body)
+	defer request.Body.Close()
+	var data addShadowEndpoint
+	err := decoder.Decode(&data)
+	if err != nil {
+		component := components.Message("Unable to add a shadow endpoint!")
+		component.Render(context.Background(), writer)
+	}
+	_, err = db.ConfigDb.Exec("INSERT INTO SHADOW_ENDPOINTS (ENDPOINT) VALUES (?);", data.Url)
+	if err != nil {
+		component := components.Message("Unable to add a shadow endpoint!")
+		component.Render(context.Background(), writer)
+	}
+	ReturnShadowEndpoints(writer, request)
+
+}
+
+func ReturnShadowEndpoints(writer http.ResponseWriter, request *http.Request) {
+	rows, err := db.ConfigDb.Query("SELECT * FROM SHADOW_ENDPOINTS")
+	if err != nil {
+		component := components.Message("Unable to fetch shadow endpoints!")
+		component.Render(context.Background(), writer)
+	}
+	var toRet []types.ShadowEndpointRow
+	for rows.Next() {
+		var data types.ShadowEndpointRow
+		rows.Scan(&data.Id, &data.Endpoint)
+		toRet = append(toRet, data)
+	}
+	rows.Close()
+	components.ShadowEndpoints(toRet).Render(context.Background(), writer)
+}

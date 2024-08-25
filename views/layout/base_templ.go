@@ -28,7 +28,7 @@ func BaseLayout() templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<!doctype html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>MGINX</title><meta name=\"description\" content=\"Simple Reverse Proxy.\"></head><link rel=\"stylesheet\" href=\"/dist/tailwind.css\"><script src=\"https://unpkg.com/htmx.org@2.0.1\" integrity=\"sha384-QWGpdj554B4ETpJJC9z+ZHJcA/i59TyjxEPXiiUgN2WmTyV5OEZWCD6gQhgkdpB/\" crossorigin=\"anonymous\"></script><script src=\"https://unpkg.com/htmx.org/dist/ext/json-enc.js\"></script><script src=\"https://unpkg.com/htmx.org@1.9.12/dist/ext/response-targets.js\"></script><body class=\"overflow-hidden\"><header class=\"text-center py-4\"><h1 class=\"text-2xl font-bold\">MGINX</h1></header><main class=\"grid place-items-center bg-blue-300 w-screen h-screen overflow-hidden\"><div class=\"grid grid-cols-2 gap-4 w-full max-w-screen-lg h-full p-4\"><div class=\"flex flex-col items-center justify-center space-y-4 h-full\"><h2 class=\"text-lg font-bold text-black mb-4\">Upstreams</h2><div class=\"rounded-lg bg-slate-100 h-[60vh] w-full border border-gray-300 overflow-y-auto\" id=\"upstreams-list\" hx-get=\"/config/upstreams\" hx-trigger=\"load, every 5s\" hx-swap=\"innerHTML\"></div>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<!doctype html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>MGINX</title><meta name=\"description\" content=\"Simple Reverse Proxy.\"></head><link rel=\"stylesheet\" href=\"/dist/tailwind.css\"><script src=\"https://unpkg.com/htmx.org@2.0.1\" integrity=\"sha384-QWGpdj554B4ETpJJC9z+ZHJcA/i59TyjxEPXiiUgN2WmTyV5OEZWCD6gQhgkdpB/\" crossorigin=\"anonymous\"></script><script src=\"https://unpkg.com/htmx.org/dist/ext/json-enc.js\"></script><script src=\"https://unpkg.com/htmx.org@1.9.12/dist/ext/response-targets.js\"></script><body class=\"overflow-hidden\"><header class=\"text-center py-4\"><h1 class=\"text-2xl font-bold\">MGINX</h1></header><main class=\"bg-blue-300 w-screen h-screen overflow-hidden\"><div class=\"grid grid-cols-[80%_32%_28%] gap-4 w-full max-w-screen-lg h-full p-4\"><!-- Upstreams List Column --><div class=\"flex flex-col items-start justify-center space-y-2 h-full ml-1\"><h2 class=\"text-lg font-bold text-black mb-4 text-center ml-auto mr-auto\">Upstreams</h2><div class=\"rounded-lg bg-slate-100 h-[60vh] w-full border border-gray-300 overflow-y-auto\" id=\"upstreams-list\" hx-get=\"/config/upstreams\" hx-trigger=\"load, every 5s\" hx-swap=\"innerHTML\"></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -36,7 +36,15 @@ func BaseLayout() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div id=\"errors\"></div></div><div class=\"flex flex-col items-center justify-center space-y-4 h-full\"><div id=\"loadBStrat\" class=\"w-full max-w-xs\" hx-get=\"/config/get-load-balancing-strategy\" hx-swap=\"innerHTML\" hx-trigger=\"load, every 20s\"></div><div id=\"loadBStratSelect\" class=\"w-full max-w-xs\" hx-get=\"/config/all-load-balancing-strategies\" hx-trigger=\"load\" hx-swap=\"innerHTML\"></div></div></div></main></body></html>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div id=\"errors\"></div></div><!-- Load Balancing Strategy Column --><div class=\"flex flex-col items-center justify-center ml-10 space-y-4 h-full\"><div id=\"loadBStrat\" class=\"w-full max-w-md\" hx-get=\"/config/get-load-balancing-strategy\" hx-swap=\"innerHTML\" hx-trigger=\"load, every 20s\"></div><div id=\"loadBStratSelect\" class=\"w-full max-w-md\" hx-get=\"/config/all-load-balancing-strategies\" hx-trigger=\"load\" hx-swap=\"innerHTML\"></div></div><!-- Shadow Endpoints Column --><div class=\"flex flex-col items-center justify-center space-y-4 h-full ml-12\"><div id=\"shadowEndpoints-list\" class=\"w-full max-w-md overflow-y-auto max-h-[50%]\" hx-get=\"/config/shadow-endpoint\" hx-swap=\"innerHTML\" hx-trigger=\"load\"></div>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = components.AddShadowEndpoint().Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</div></div></main></body></html>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
