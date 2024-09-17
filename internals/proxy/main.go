@@ -8,8 +8,10 @@ import (
 	"io"
 	"math/rand"
 	"mginx/internals/db"
+	"mginx/internals/shadow"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 
 	_ "modernc.org/sqlite"
@@ -86,6 +88,7 @@ func ReverseProxy(writer http.ResponseWriter, request *http.Request) {
 			TLSClientConfig: &tls.Config{},
 		},
 	}
+	go shadow.SendToShadowUrls(os.Stdout, modifiedRequest)
 	response, err := defaultClient.Do(modifiedRequest) // perform http request
 	if err != nil {
 		fmt.Fprintf(writer, "Error sending request %s", err.Error())
@@ -98,7 +101,6 @@ func ReverseProxy(writer http.ResponseWriter, request *http.Request) {
 		}
 	}
 	writer.WriteHeader(response.StatusCode) // write response status code to writer
-
-	io.Copy(writer, response.Body) // copy response body to writer
+	io.Copy(writer, response.Body)          // copy response body to writer
 
 }

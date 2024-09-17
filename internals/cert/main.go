@@ -32,7 +32,7 @@ func GenCerts() {
 		},
 		DNSNames:  []string{"localhost"},
 		NotBefore: time.Now(),
-		NotAfter:  time.Now().Add(3 * time.Hour),
+		NotAfter:  time.Now().Add(1000 * time.Hour),
 
 		KeyUsage:              x509.KeyUsageDigitalSignature,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
